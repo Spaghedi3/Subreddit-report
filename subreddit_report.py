@@ -27,7 +27,7 @@ def get_data(subreddit, token):
 def get_hot_posts(subreddit, token, limit=10):
     headers = {'Authorization': f'bearer {token}', 'User-Agent': USER_AGENT}
     response = requests.get(
-        f'https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}', headers=headers)
+        f'https://oauth.reddit.com/r/{subreddit}/hot.json?limit={limit}', headers=headers)
     return response.json().get('data', {}).get('children', [])
 
 
@@ -54,7 +54,10 @@ if __name__ == "__main__":
     token = get_token()
     subreddit = "python"
     subreddit_data = get_data(subreddit, token)
-
+    hot_posts = get_hot_posts(subreddit, token, limit=10)
+    print("posts:")
+    for post in hot_posts:
+        print(post)
     html_content = generate_html(subreddit_data)
     with open("subreddit_report.html", "w", encoding="utf-8") as f:
         f.write(html_content)
