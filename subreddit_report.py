@@ -24,6 +24,12 @@ def get_data(subreddit, token):
 
     return response.json().get('data', {})
 
+def get_hot_posts(subreddit, token, limit=10):
+    headers = {'Authorization': f'bearer {token}', 'User-Agent': USER_AGENT}
+    response = requests.get(
+        f'https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}', headers=headers)
+    return response.json().get('data', {}).get('children', [])
+
 
 def generate_html(subreddit_data):
     template = Template("""
