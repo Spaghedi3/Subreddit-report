@@ -1,4 +1,6 @@
 import requests
+from datetime import datetime, timezone, timedelta
+from collections import Counter
 from jinja2 import Template
 
 CLIENT_ID = ''
@@ -30,6 +32,32 @@ def get_hot_posts(subreddit, token, limit=10):
         f'https://oauth.reddit.com/r/{subreddit}/hot.json?limit={limit}', headers=headers)
     return response.json().get('data', {}).get('children', [])
 
+def analyze_posts(posts):
+    now = datetime.now(timezone.utc)
+    flairs = Counter()
+    recent_posts = 0
+    metadata = []
+
+    for post in posts:
+        data = post['data']
+        flair = data.get('link_flair_text', 'No Flair')
+        created_utc = datetime.fromtimestamp(data['created_utc'], timezone.utc)
+
+        flairs[flair] += 1
+
+        if now - created_utc <= timedelta(days=1):
+            recent_posts += 1
+
+        metadata.append({
+            'title': data['title'],
+            'author': data['author'],
+            'score': data['score'],
+            'comments': data['num_comments'],
+            'link': f"https://www.reddit.com{data['permalink']}",
+            'created': created_utc.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    return flairs, recent_posts, metadata
 
 def generate_html(subreddit_data):
     template = Template("""
@@ -58,6 +86,11 @@ if __name__ == "__main__":
     print("posts:")
     for post in hot_posts:
         print(post)
+    flairs, recent_posts, metadata = analyze_posts(hot_posts)
+    for flair, count in flairs.items():
+        print(f'flair:{flair}:{count}')
+    print(f'recent posts:{recent_posts}')
+    print(f'metadata:{metadata}')
     html_content = generate_html(subreddit_data)
     with open("subreddit_report.html", "w", encoding="utf-8") as f:
         f.write(html_content)
