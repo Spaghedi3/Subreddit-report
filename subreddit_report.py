@@ -7,7 +7,6 @@ CLIENT_ID = ''
 CLIENT_SECRET = ''
 USER_AGENT = "subreddit_report/1.0"
 
-
 def get_token():
     auth = requests.auth.HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
     data = {'grant_type': 'client_credentials'}
@@ -15,15 +14,12 @@ def get_token():
     response = requests.post(
         'https://www.reddit.com/api/v1/access_token',
         auth=auth, data=data, headers=headers)
-    print(response.json())
     return response.json().get('access_token')
-
 
 def get_data(subreddit, token):
     headers = {'Authorization': f'bearer {token}', 'User-Agent': USER_AGENT}
     response = requests.get(
         f'https://oauth.reddit.com/r/{subreddit}/about.json', headers=headers)
-
     return response.json().get('data', {})
 
 def get_hot_posts(subreddit, token, limit=10):
@@ -59,7 +55,7 @@ def analyze_posts(posts):
 
     return flairs, recent_posts, metadata
 
-def generate_html(subreddit_data):
+def generate_html(subreddit_data, recent_posts, metadata, flairs):
     template = Template("""
     <!DOCTYPE html>
     <html>
@@ -72,25 +68,41 @@ def generate_html(subreddit_data):
         <p><strong>Subscribers:</strong> {{ subreddit_data['subscribers'] }}</p>
         <p><strong>Active Users:</strong> {{ subreddit_data['accounts_active'] }}</p>
         <p><strong>Posts in Last 24h:</strong> {{ recent_posts }}</p>
+
+        <h2>Highlighted Threads</h2>
+        <ul>
+            {% for post in metadata %}
+            <li>
+                <a href="{{ post['link'] }}" target="_blank">{{ post['title'] }}</a> <br>
+                <strong>Author:</strong> {{ post['author'] }} <br>
+                <strong>Score:</strong> {{ post['score'] }} <br>
+                <strong>Comments:</strong> {{ post['comments'] }} <br>
+                <strong>Created:</strong> {{ post['created'] }}
+            </li>
+            {% endfor %}
+        </ul>
+
+        <h2>Most Used Flairs</h2>
+        <ul>
+            {% for flair, count in flairs.items() %}
+            <li>{{ flair }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
     </body>
     </html>
     """)
     return template.render(
-        subreddit_data=subreddit_data)
+        subreddit_data=subreddit_data, recent_posts=recent_posts, metadata=metadata, flairs=flairs)
 
 if __name__ == "__main__":
     token = get_token()
-    subreddit = "python"
+    subreddit = "opium"
     subreddit_data = get_data(subreddit, token)
     hot_posts = get_hot_posts(subreddit, token, limit=10)
-    print("posts:")
-    for post in hot_posts:
-        print(post)
     flairs, recent_posts, metadata = analyze_posts(hot_posts)
-    for flair, count in flairs.items():
-        print(f'flair:{flair}:{count}')
-    print(f'recent posts:{recent_posts}')
-    print(f'metadata:{metadata}')
-    html_content = generate_html(subreddit_data)
+
+    html_content = generate_html(subreddit_data, recent_posts, metadata, flairs)
     with open("subreddit_report.html", "w", encoding="utf-8") as f:
         f.write(html_content)
+
+    print("Report generated: subreddit_report.html")
