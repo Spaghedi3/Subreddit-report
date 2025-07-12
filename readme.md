@@ -1,6 +1,6 @@
 # Subreddit-report
 
-Proiect Python.
+Python (Flask) project.
 
 ## Overview
 
